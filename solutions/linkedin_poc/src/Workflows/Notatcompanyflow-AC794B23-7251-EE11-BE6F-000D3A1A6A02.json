@@ -1,0 +1,109 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "impersonation": {},
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "demo_sharedcommondataserviceforapps_6afaf"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_a_row_is_added,_modified_or_deleted": {
+          "metadata": {
+            "operationMetadataId": "f9ad39e7-470c-42a3-9259-4cf64ac6ed9b"
+          },
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 3,
+              "subscriptionRequest/entityname": "contact",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filteringattributes": "msdyn_orgchangestatus"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Terminate": {
+          "runAfter": {
+            "Condition": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "89ce3694-8c41-4b6b-9541-bfb818bcb078"
+          },
+          "type": "Terminate",
+          "inputs": {
+            "runStatus": "Succeeded"
+          }
+        },
+        "Condition": {
+          "actions": {
+            "Add_a_new_row_2": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "6a83f197-23cd-4cf4-aa3e-812d26014581"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord"
+                },
+                "parameters": {
+                  "entityName": "appnotifications",
+                  "item/title": "No Longer at Company",
+                  "item/data": "{\n  \"actions\": [\n        {\n        \"title\": \"View Contact\",\n        \"data\": {\n            \"url\": \"?pagetype=entityrecord&etn=contact&id=6492b62d-d6e1-ec11-bb3d-002248239ee7\", \n            \"navigationTarget\": \"dialog\"\n               }        \n        }\n      ]\n     }",
+                  "item/icontype": 100000003,
+                  "item/ownerid@odata.bind": "/systemusers(@{triggerOutputs()?['body/_ownerid_value']})",
+                  "item/priority": 200000001,
+                  "item/toasttype": 200000000
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {},
+          "expression": {
+            "equals": [
+              "@triggerOutputs()?['body/msdyn_orgchangestatus']",
+              1
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "223957b7-fc34-45b6-a05d-11b8acc34ce1"
+          },
+          "type": "If"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

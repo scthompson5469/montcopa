@@ -1,0 +1,383 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "impersonation": {},
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "demo_sharedcommondataserviceforapps_6afaf"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_onedriveforbusiness": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "demo_sharedonedriveforbusiness_8bad0"
+        },
+        "api": {
+          "name": "shared_onedriveforbusiness"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "demo_sharedoffice365_15f34"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Week",
+            "interval": 1
+          },
+          "metadata": {
+            "operationMetadataId": "fc35d06e-0425-458e-9bb9-a297b878e6b7"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "List_of_contacts_with_not_at_company_flag": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "4ad4f68a-70c3-499e-aff9-2d60a6238d51"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords"
+            },
+            "parameters": {
+              "entityName": "contacts",
+              "fetchXml": "<fetch version=\"1.0\" output-format=\"xml-platform\" mapping=\"logical\" distinct=\"false\">\n  <entity name=\"contact\">\n    <attribute name=\"fullname\" />\n    <attribute name=\"telephone1\" />\n    <attribute name=\"contactid\" />\n    <attribute name=\"ownerid\" />\n    <order attribute=\"fullname\" descending=\"false\" />\n    <filter type=\"and\">\n      <condition attribute=\"msdyn_orgchangestatus\" operator=\"eq\" value=\"1\" />\n      <condition attribute=\"statecode\" operator=\"eq\" value=\"0\" />\n    </filter>\n  </entity>\n</fetch>",
+              "$top": 5000
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Create_Owners_Array": {
+          "runAfter": {
+            "List_of_contacts_with_not_at_company_flag": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "501d29d3-d6a1-4219-bed3-ece7392327b9"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "owners",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('List_of_contacts_with_not_at_company_flag')?['body/value']",
+          "actions": {
+            "Condition": {
+              "actions": {
+                "Append_to_array_variable": {
+                  "runAfter": {},
+                  "metadata": {
+                    "operationMetadataId": "caf6e1d0-6fd0-4c0a-9044-b98decf94d1e"
+                  },
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "owners",
+                    "value": "@items('Apply_to_each')?['_ownerid_value']"
+                  }
+                }
+              },
+              "runAfter": {},
+              "expression": {
+                "not": {
+                  "contains": [
+                    "@variables('owners')",
+                    "@items('Apply_to_each')?['_ownerid_value']"
+                  ]
+                }
+              },
+              "metadata": {
+                "operationMetadataId": "127d7962-1d1f-4750-ae5f-e397bead2334"
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Create_Owners_Array": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "cbe32865-3d7b-447c-903d-3f7572e4fc06"
+          },
+          "type": "Foreach"
+        },
+        "Compose": {
+          "runAfter": {
+            "Apply_to_each": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "831965de-dc12-4168-844c-37cbf384ee5a"
+          },
+          "type": "Compose",
+          "inputs": "@variables('owners')"
+        },
+        "Apply_to_each_2": {
+          "foreach": "@variables('owners')",
+          "actions": {
+            "List_rows_2": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "c6a98c97-ae2e-42f3-b01f-e40a5f7fc448"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords"
+                },
+                "parameters": {
+                  "entityName": "contacts",
+                  "fetchXml": "<fetch version=\"1.0\" output-format=\"xml-platform\" mapping=\"logical\" distinct=\"false\">\n  <entity name=\"contact\">\n    <attribute name=\"fullname\" />\n    <attribute name=\"telephone1\" />\n    <attribute name=\"contactid\" />\n    <order attribute=\"fullname\" descending=\"false\" />\n    <filter type=\"and\">\n      <condition attribute=\"msdyn_orgchangestatus\" operator=\"eq\" value=\"1\" />\n      <condition attribute=\"ownerid\" operator=\"eq\" uitype=\"systemuser\" value=\"{@{items('Apply_to_each_2')}}\" />\n      <condition attribute=\"statecode\" operator=\"eq\" value=\"0\" />\n    </filter>\n  </entity>\n</fetch>",
+                  "$top": 5000
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_a_row_by_ID": {
+              "runAfter": {
+                "List_rows_2": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "fdd0d71e-8b36-4f7c-aa47-c55472940812"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem"
+                },
+                "parameters": {
+                  "entityName": "systemusers",
+                  "recordId": "@items('Apply_to_each_2')"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Select_Data_for_CSV_file": {
+              "runAfter": {
+                "Generate_Record_URL": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "fbcc8859-5cbe-4a6e-b452-1e9737ba6d39"
+              },
+              "type": "Select",
+              "inputs": {
+                "from": "@outputs('List_rows_2')?['body/value']",
+                "select": {
+                  "Full Name": "@item()?['fullname']",
+                  "Email": "@item()?['emailaddress1']",
+                  "Record URL": "@outputs('Generate_Record_URL')"
+                }
+              }
+            },
+            "Generate_Record_URL": {
+              "runAfter": {
+                "Get_a_row_by_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "21844968-420d-41da-ab3b-5d11575475f0"
+              },
+              "type": "Compose",
+              "inputs": "@concat('https://org19fdaf0c.crm.dynamics.com/main.aspx?etn=contact&pagetype=entityrecord&id=',outputs('List_rows_2')?['body']?['value'][0]['contactid'])"
+            },
+            "Create_CSV_table": {
+              "runAfter": {
+                "Select_Data_for_CSV_file": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "d6644bea-0ab9-4c27-9960-b52be4588548"
+              },
+              "type": "Table",
+              "inputs": {
+                "from": "@body('Select_Data_for_CSV_file')",
+                "format": "CSV"
+              }
+            },
+            "Create_file": {
+              "runAfter": {
+                "Create_CSV_table": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "422fe007-25b3-480d-9858-2fc7d1039220"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                  "connectionName": "shared_onedriveforbusiness",
+                  "operationId": "CreateFile"
+                },
+                "parameters": {
+                  "folderPath": "/",
+                  "name": "notatcompany_reports_@{utcNow()}.csv",
+                  "body": "@body('Create_CSV_table')"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runtimeConfiguration": {
+                "contentTransfer": {
+                  "transferMode": "Chunked"
+                }
+              }
+            },
+            "Get_file_content": {
+              "runAfter": {
+                "Create_file": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "dfde9230-aa58-460b-8237-350274928171"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                  "connectionName": "shared_onedriveforbusiness",
+                  "operationId": "GetFileContent"
+                },
+                "parameters": {
+                  "id": "@outputs('Create_file')?['body/Id']",
+                  "inferContentType": true
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Send_an_email_(V2)": {
+              "runAfter": {
+                "Get_file_content": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "cab549ac-48de-4cf7-9cd8-56edd5617d18"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "SendEmailV2"
+                },
+                "parameters": {
+                  "emailMessage/To": "@outputs('Get_a_row_by_ID')?['body/internalemailaddress']",
+                  "emailMessage/Subject": "Not at Company Contact List",
+                  "emailMessage/Body": "<p>Hello,<br>\nPlease see attached list of contacts who are no longer at their company.&nbsp;</p>",
+                  "emailMessage/Attachments": [
+                    {
+                      "Name": "@outputs('Create_file')?['body/Name']",
+                      "ContentBytes": "@body('Get_file_content')"
+                    }
+                  ],
+                  "emailMessage/Importance": "Normal"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Compose": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "b225bcc6-915f-4f95-bc41-865efb3d7c89"
+          },
+          "type": "Foreach"
+        },
+        "Apply_to_each_3": {
+          "foreach": "@outputs('List_of_contacts_with_not_at_company_flag')?['body/value']",
+          "actions": {
+            "Add_a_new_row": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "c27a6109-9f15-43b2-b7f8-453092409733"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord"
+                },
+                "parameters": {
+                  "entityName": "appnotifications",
+                  "item/title": "Contact no longer at company",
+                  "item/body": "This contact is no longer at the company",
+                  "item/data": "{\n  \"actions\": [\n        {\n        \"title\": \"View Contact\",\n        \"data\": {\n            \"url\": \"?pagetype=entityrecord&etn=contact&id=6492b62d-d6e1-ec11-bb3d-002248239ee7\", \n            \"navigationTarget\": \"dialog\"\n               }        \n        }\n      ]\n     }",
+                  "item/icontype": 100000000,
+                  "item/ownerid@odata.bind": "/systemusers(@{items('Apply_to_each_3')?['_ownerid_value']})",
+                  "item/priority": 200000001,
+                  "item/toasttype": 200000000
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Apply_to_each_2": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "0448a8d9-2f30-4f99-ae77-93614a11fa44"
+          },
+          "type": "Foreach"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": "78720f54e49444d0bd456477288a7ef7"
+  },
+  "schemaVersion": "1.0.0.0"
+}
